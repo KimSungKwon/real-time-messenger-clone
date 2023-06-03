@@ -1,5 +1,6 @@
 'use client';
 
+import axios from "axios";
 import { useCallback, useState } from "react";
 import { useForm, FieldValues, SubmitHandler } from "react-hook-form";
 import { BsGithub, BsGoogle } from 'react-icons/bs';
@@ -7,6 +8,8 @@ import { BsGithub, BsGoogle } from 'react-icons/bs';
 import Input from "./inputs/Input";
 import Button from "./Button";
 import AuthSocialButton from "./AuthSocialButton";
+import { toast } from 'react-hot-toast';
+import { signIn } from 'next-auth/react';
 
 type Variant = 'LOGIN' | 'REGISTER';
 
@@ -31,20 +34,48 @@ const AuthForm = () => {
     }
   });
 
+  // login & register
   const onSubmit: SubmitHandler<FieldValues> = (data) => {
     setIsLoading(true);
 
     if (variant === 'REGISTER') {
-
+      axios.post('/api/register', data)
+        .catch(() => toast.error('Something went wrong!'))
+        .finally(() => setIsLoading(false));
     }
     if (variant === 'LOGIN') {
-
+      signIn('credentials', {
+        ...data,
+        redirect: false
+      })
+      .then((callback) => {
+        if (callback?.error) {
+          toast.error('Invalid credentials');
+        }
+        if (callback?.ok && !callback?.error) {
+          toast.success('Logged in!')
+        }
+      })
+      .finally(() => setIsLoading(false));
     }
   }
 
+  // login with social account
   const socialAction = (action: string) => {
     setIsLoading(true)
-
+    // action: 'google' or 'github'
+    signIn(action, {
+      redirect: false
+    })
+    .then((callback) => {
+      if (callback?.error) {
+        toast.error('Invalid credentials');
+      }
+      if (callback?.ok && !callback?.error) {
+        toast.success('Logged in!')
+      }
+    })
+    .finally(() => setIsLoading(false));
   }
 
   return (  
@@ -63,9 +94,11 @@ const AuthForm = () => {
               disabled={isLoading}
             /> 
           )}
+          
           <Input 
             id="email"
             label="Email"
+            type="email"
             register={register}
             errors={errors}
             disabled={isLoading}
@@ -73,6 +106,7 @@ const AuthForm = () => {
           <Input 
             id="password"
             label="Password"
+            type="password"
             register={register}
             errors={errors}
             disabled={isLoading}
